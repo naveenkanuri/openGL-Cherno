@@ -168,13 +168,15 @@ int main()
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     float positions[] = {
-            -0.5f, -0.5f,
-             0.5f, -0.5f,
-             0.5f, 0.5f,
+            -0.5f, -0.5f, // 0
+             0.5f, -0.5f, // 1
+             0.5f,  0.5f, // 2
+             -0.5f, 0.5f, // 3
+    };
 
-             0.5f, 0.5f,
-             -0.5f, 0.5f,
-             -0.5f,-0.5f
+    unsigned int indices[] = {
+            0, 1, 2, // draw first triangle with above indices
+            2, 3, 0  // draw second triangle with above indices to make a full square
     };
 
     unsigned int buffer;
@@ -199,7 +201,9 @@ int main()
      * 4. I'm hinting you that the draw type is static.
      * i.e., I'm not changing the data, but you have to draw the same data every loop.
      * */
-    glBufferData(GL_ARRAY_BUFFER, 6* 2* sizeof(float), positions, GL_STATIC_DRAW);
+    // notice the memory improvement by using indices.
+    // we now need only 4 vertices (8 floats) instead of 6 (12 floats)
+    glBufferData(GL_ARRAY_BUFFER, 8* sizeof(float), positions, GL_STATIC_DRAW);
 
     /* A little intro to a vertex:
      * A vertex can have multiple attributes like position, texture coordinates, normals etc.
@@ -249,6 +253,15 @@ int main()
      * */
     glEnableVertexAttribArray(0);
 
+    unsigned int ibo; // index buffer
+    glGenBuffers(1, &ibo); // give me an id for my index buffer
+
+    // bind the index buffer to an element array buffer
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    // my index buffer is of element array type, size is 6 unsigned ints,
+    // pointer to my indices array, and hint is draw static
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+
     // directories are relative to the location of the executable. NOT to the main.cpp
     ShaderProgramSource source = parseShader("../res/shaders/Basic.shader");
 
@@ -273,7 +286,13 @@ int main()
          * Now that you got the array of bytes, I want you to draw them as triangles
          * The triangle's starting index is 0 and the number of indices to be rendered is 3
          * */
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        //glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        // since we are using indices now, we are drawing elements instead of arrays
+        // we are drawing triangles, using 6 indices, type unsigned int
+        // since we already bound index buffer above as glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo)
+        // we can pass nullptr to 4th argument
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
