@@ -167,10 +167,14 @@ int main()
 
     std::cout << glGetString(GL_VERSION) << std::endl;
 
-    float positions[6] = {
+    float positions[] = {
             -0.5f, -0.5f,
-             0.f,   0.5f,
-             0.5f, -0.5f
+             0.5f, -0.5f,
+             0.5f, 0.5f,
+
+             0.5f, 0.5f,
+             -0.5f, 0.5f,
+             -0.5f,-0.5f
     };
 
     unsigned int buffer;
@@ -195,7 +199,7 @@ int main()
      * 4. I'm hinting you that the draw type is static.
      * i.e., I'm not changing the data, but you have to draw the same data every loop.
      * */
-    glBufferData(GL_ARRAY_BUFFER, 6* sizeof(float), positions, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 6* 2* sizeof(float), positions, GL_STATIC_DRAW);
 
     /* A little intro to a vertex:
      * A vertex can have multiple attributes like position, texture coordinates, normals etc.
@@ -269,7 +273,7 @@ int main()
          * Now that you got the array of bytes, I want you to draw them as triangles
          * The triangle's starting index is 0 and the number of indices to be rendered is 3
          * */
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
