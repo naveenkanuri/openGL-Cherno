@@ -9,6 +9,95 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
+static unsigned int compileShader(unsigned int type, const std::string& source)
+{
+    /* create a shader of type vertex_shader and give its id */
+    unsigned int id = glCreateShader(type);
+    const char* src = source.c_str();
+
+    /* So, you created a shader and gave me an id. Good.
+     * Now, I will tell where the shader code is
+     *
+     * 1. the id of the shader, whose source I'm giving you.
+     * If you already have a shader source in that id, replace that
+     * 2. the number of strings in the array (shader source)
+     * 3. the address of the pointer to the shader source string
+     * (why can't you just take the pointer to source string, openGL?)
+     * 4. If the length is null, the string is assumed to be null terminated
+     * Refer http://docs.gl/gl4/glShaderSource for alternatives for 4th argument
+     * */
+    glShaderSource(id, 1, &src, nullptr);
+
+    /* Now that you know the shader source string and other details, compile the shader*/
+    glCompileShader(id);
+
+    // error handling before returning the id
+
+    int result;
+
+    /* We are checking whether our shader is successfully compiled or not
+     * actual function is glGetShader()
+     * Here 'i' stands for id that it needs
+     * and 'v' stands for the vector (int pointer) to store the result*/
+    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+
+    if(result == GL_FALSE) // our compilation failed
+    {
+        int length;
+        // Get the info log length
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+
+        char message[length]; // we are creating this on stack. alternative to create on stack is using alloca
+        // char* message = (char*)alloca(length * sizeof(char));
+
+        // fill the log in our message
+        glGetShaderInfoLog(id, length, &length, message);
+        std::cout << "Failed to Compile " <<
+                                         (type == GL_VERTEX_SHADER ? "vertex" : "fragment")
+                                         << " shader!" << std::endl;
+        std::cout << message << std::endl;
+
+        /* No need of keeper our shader as its compilation failed*/
+        glDeleteShader(id);
+        return 0;
+    }
+
+    return id;
+}
+
+static unsigned int createProgram(const std::string& vertexShader, const std::string& fragmentShader)
+{
+    /* I want to write a shader program. So create one, and give me its id back*/
+    unsigned int program = glCreateProgram();
+    unsigned int vs = compileShader(GL_VERTEX_SHADER, vertexShader);
+    unsigned int fs = compileShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+    /* After compiling shaders, attach them to the above created program*/
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+
+    /* links the program object specified by program
+     * If any shader objects of type GL_VERTEX_SHADER/GL_GEOMETRY_SHADER/GL_FRAGMENT_SHADER are attached to program,
+     * they will be used to create an executable that will run on the programmable vertex/geometry/fragment processor respectively
+     * */
+    glLinkProgram(program);
+
+    /* checks whether the executables in the program can execute given the current state of the program.
+     * For both glLinkProgram and glValidateProgram,
+     * the status of the validation operation is stored as part of the program's object state.
+     * This will be set to GL_TRUE if validation succeeded and GL_FALSE otherwise. It can be queried by
+     * calling glGetProgram() with arguments program and GL_VALIDATE_STATUS*/
+    glValidateProgram(program);
+
+    /* Now that we've linked our shaders to our program, we can flag them for deletion
+     * frees the memory and invalidates the name associated with the shader object specified by shader.
+     * This command effectively undoes the effects of a call to glCreateShader.*/
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    return program;
+}
+
 int main()
 {
     GLFWwindow* window;
@@ -18,7 +107,7 @@ int main()
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(640, 480, "Hello World", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -112,6 +201,35 @@ int main()
      * */
     glEnableVertexAttribArray(0);
 
+    // location = 0 -> this zero should match with zero of glVertexAttribPointer()'s first argument
+    std::string vertexShader =
+            "#version 330 core \n"
+            "\n"
+            "layout(location = 0) in vec4 position; \n"
+            "\n"
+            "void main() \n"
+            "{\n"
+            "   gl_Position = position;\n"
+            "}\n"
+            ;
+
+    std::string fragmentShader =
+            "#version 330 core \n"
+            "\n"
+            "out vec4 color; \n"
+            "\n"
+            "void main() \n"
+            "{\n"
+            "   color = vec4(1.0, 0.0, 0.0, 1.0); \n"
+            "}\n"
+            ;
+
+    /* Ok above are the source strings for vertex and fragment shaders. create a shader program for me*/
+    unsigned int shaderProgram = createProgram(vertexShader, fragmentShader);
+
+    /* Now, use that shader program for our triangle*/
+    glUseProgram(shaderProgram);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -134,6 +252,9 @@ int main()
         /* Poll for and process events */
         glfwPollEvents();
     }
+
+    /* delete the shader program now that our window is closed and program is about to exit*/
+    glDeleteProgram(shaderProgram);
 
     glfwTerminate();
     return 0;
