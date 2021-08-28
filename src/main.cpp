@@ -4,10 +4,54 @@
 
 /* Glew is the OpenGL extension wrangler. i.e. it has the openGL function declarations and
  * can link to the gpu drivers to get the functionality*/
-#include "GL/glew.h"
 /* GLFW is the platform independent library to create a window*/
+
+#include "GL/glew.h"
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+
+struct ShaderProgramSource
+{
+    std::string vertexSource;
+    std::string fragmentSource;
+};
+
+static ShaderProgramSource parseShader(const std::string& filePath)
+{
+    std::ifstream stream(filePath);
+    std::string line;
+    std::stringstream ss[2];
+
+    enum class ShaderType
+    {
+        NONE = -1, VERTEX = 0, FRAGMENT =1
+    };
+    ShaderType type = ShaderType::NONE;
+    while(getline(stream, line))
+    {
+        if(line.find("#shader") != std::string::npos)
+        {
+            if(line.find("vertex") != std::string::npos)
+            {
+                //set vertex mode
+                type = ShaderType::VERTEX;
+            }
+            else if(line.find("fragment") != std::string::npos)
+            {
+                // set to fragment mode
+                type = ShaderType::FRAGMENT;
+            }
+        }
+        else
+        {
+            ss[(int)type] << line << "\n";
+        }
+    }
+    return { ss[0].str(), ss[1].str()};
+}
 
 static unsigned int compileShader(unsigned int type, const std::string& source)
 {
@@ -201,31 +245,11 @@ int main()
      * */
     glEnableVertexAttribArray(0);
 
-    // location = 0 -> this zero should match with zero of glVertexAttribPointer()'s first argument
-    std::string vertexShader =
-            "#version 330 core \n"
-            "\n"
-            "layout(location = 0) in vec4 position; \n"
-            "\n"
-            "void main() \n"
-            "{\n"
-            "   gl_Position = position;\n"
-            "}\n"
-            ;
+    // directories are relative to the location of the executable. NOT to the main.cpp
+    ShaderProgramSource source = parseShader("../res/shaders/Basic.shader");
 
-    std::string fragmentShader =
-            "#version 330 core \n"
-            "\n"
-            "out vec4 color; \n"
-            "\n"
-            "void main() \n"
-            "{\n"
-            "   color = vec4(1.0, 0.0, 0.0, 1.0); \n"
-            "}\n"
-            ;
-
-    /* Ok above are the source strings for vertex and fragment shaders. create a shader program for me*/
-    unsigned int shaderProgram = createProgram(vertexShader, fragmentShader);
+    /* Ok now that you've read from shader file, create a shader program for me*/
+    unsigned int shaderProgram = createProgram(source.vertexSource, source.fragmentSource);
 
     /* Now, use that shader program for our triangle*/
     glUseProgram(shaderProgram);
