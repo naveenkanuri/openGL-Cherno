@@ -185,3 +185,8 @@ unsigned int Shader::createProgram(const std::string& vertexShader, const std::s
 
 	return program;
 }
+
+void Shader::setUniform1i(const std::string& name, int value)
+{
+	glCall(glUniform1i(getUniformLocation(name), value));
+}

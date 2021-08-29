@@ -15,6 +15,7 @@
 #include "VertexArray.h"
 #include "VertexBufferLayout.h"
 #include "Shader.h"
+#include "Texture.h"
 
 int main()
 {
@@ -29,7 +30,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", nullptr, nullptr);
+    window = glfwCreateWindow(1280, 800, "Hello World", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -49,10 +50,10 @@ int main()
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     float positions[] = {
-            -0.5f, -0.5f, // 0
-             0.5f, -0.5f, // 1
-             0.5f,  0.5f, // 2
-             -0.5f, 0.5f, // 3
+            -0.5f, -0.5f, 0.0f, 0.0f, // index 0, adding texture coordinates
+             0.5f, -0.5f, 1.0f, 0.0f, // index 1, adding texture coordinates
+             0.5f,  0.5f, 1.0f, 1.0f, // index 2, adding texture coordinates
+             -0.5f, 0.5f, 0.0f, 1.0f  // index 3, adding texture coordinates
     };
 
     unsigned int indices[] = {
@@ -60,10 +61,14 @@ int main()
             2, 3, 0  // draw second triangle with above indices to make a full square
     };
 
+	glCall(glEnable(GL_BLEND));
+	glCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
     /* Generating Vertex Array Object and binding is mandatory in GL_CORE_PROFILE */
 	VertexArray va;
-    VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+    VertexBuffer vb(positions, 4 * 4 * sizeof(float));
 	VertexBufferLayout layout;
+	layout.push<float>(2);
 	layout.push<float>(2);
 	va.addBuffer(vb, layout);
 
@@ -73,6 +78,10 @@ int main()
 	Shader shader("../res/shaders/Basic.shader");
 	shader.bind();
 	shader.setUniform4f("u_Color", 0.8f, 0.3f, 0.8f, 1.0f);
+
+	Texture texture("../res/textures/pop.png");
+	texture.bind(0);
+	shader.setUniform1i("u_Texture", 0);// this value should match above bind slot of texture
 
     /* Reset all our bindings*/
 	va.unBind();
