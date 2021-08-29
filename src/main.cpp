@@ -34,7 +34,7 @@ static bool glLogCall(const char* function, const char* file, int line)
 {
     while(GLenum error = glGetError())
     {
-        std::cout << "[OpenGL Error] (" << error << ") occurred in "
+        std::cout << "[OpenGL Error] (0x0" << std::hex << error << std::dec << ") occurred in "
         << function << " at " <<
         file << ": " << line <<std::endl;
         return false;
@@ -180,6 +180,10 @@ int main()
     if (!glfwInit())
         return -1;
 
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
+
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(640, 480, "Hello World", nullptr, nullptr);
     if (!window)
@@ -211,6 +215,11 @@ int main()
             0, 1, 2, // draw first triangle with above indices
             2, 3, 0  // draw second triangle with above indices to make a full square
     };
+
+    /* Generating Vertex Array Object and binding is mandatory in GL_CORE_PROFILE */
+    unsigned int vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
 
     unsigned int buffer;
     /* I need 1 buffer. So give me one buffer. And put the address of the generated buffer
@@ -312,6 +321,12 @@ int main()
     glCall(int location = glGetUniformLocation(shaderProgram, "u_Color"));
     ASSERT(location != -1);
 
+    /* Reset all our bindings*/
+    glCall(glBindVertexArray(0));
+    glCall(glUseProgram(0));
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+
     float r = 0.0f;
     float increment = 0.05f;
 
@@ -332,11 +347,24 @@ int main()
          * */
         //glDrawArrays(GL_TRIANGLES, 0, 6);
 
+        glCall(glUseProgram(shaderProgram));
         /* Now that we got the location of the uniform (color vec4 in this case),
          * we are setting the value of that color uniform from our cpu
          * we are updating red channel value per draw call
          * */
         glCall(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+
+        /* After resetting all our bindings, we just need to bind our vao
+         * binding vertex buffer and setting up its layout becomes binding the vertex array object because
+         * this vao contains all the state we actually need
+         *
+         * when we bind a vao, a vertex buffer and then specify the layout of vertex array
+         * in glVertexAttribPointer(), vao gets linked to vertex buffer and the layout.
+         * so calling glBindVertexArray(vao) is enough here
+         * */
+        glCall(glBindVertexArray(vao));
+
+        glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
 
         if(r > 1.0f)
             increment = -0.05f;
