@@ -9,7 +9,7 @@ project(OpenGL-theCherno)
 # replace with your preferred version of c++
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(${PROJECT_NAME} src/main.cpp src/Renderer.cpp src/VertexBuffer.cpp src/IndexBuffer.cpp src/VertexArray.cpp src/VertexBufferLayout.cpp )
+add_executable(${PROJECT_NAME} src/main.cpp src/Renderer.cpp src/VertexBuffer.cpp src/IndexBuffer.cpp src/VertexArray.cpp src/VertexBufferLayout.cpp src/Shader.cpp)
 
 target_link_libraries(${PROJECT_NAME} GL glfw ${PROJECT_SOURCE_DIR}/Dependencies/glew/lib/libGLEW.so.2.1.0)
 
