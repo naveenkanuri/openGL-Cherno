@@ -191,6 +191,9 @@ int main()
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
 
+    /* enable vsync*/
+    glfwSwapInterval(1);
+
     if(glewInit() != GLEW_OK){
         std::cout << "Error" << std::endl;
     }
@@ -301,6 +304,17 @@ int main()
     /* Now, use that shader program for our triangle*/
     glCall(glUseProgram(shaderProgram));
 
+    /* Each uniform (variable) we write in our shader will get assigned an id (location)
+     * So we are asking opengl to give us that id (location) after writing the glUseProgram()
+     * 1. the first argument is the shaderProgram which has the uniform
+     * 2. the second argument is the name of the uniform (we called our uniform u_Color in our shader)
+     * */
+    glCall(int location = glGetUniformLocation(shaderProgram, "u_Color"));
+    ASSERT(location != -1);
+
+    float r = 0.0f;
+    float increment = 0.05f;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -317,6 +331,19 @@ int main()
          * The triangle's starting index is 0 and the number of indices to be rendered is 3
          * */
         //glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        /* Now that we got the location of the uniform (color vec4 in this case),
+         * we are setting the value of that color uniform from our cpu
+         * we are updating red channel value per draw call
+         * */
+        glCall(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+
+        if(r > 1.0f)
+            increment = -0.05f;
+        else if (r < 0.0f)
+            increment = 0.05f;
+
+        r += increment;
 
         // since we are using indices now, we are drawing elements instead of arrays
         // we are drawing triangles, using 6 indices, type unsigned int
