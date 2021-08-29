@@ -13,6 +13,36 @@
 #include <string>
 #include <sstream>
 
+#define ASSERT(x) if(!(x)) __builtin_trap();
+#define glCall(x) glClearError();\
+    x;\
+    ASSERT(glLogCall(#x, __FILE__, __LINE__))
+
+static void glClearError()
+{
+    /* To allow for distributed implementations, there may be several error flags.
+     * If any single error flag has recorded an error, the value of that flag is returned
+     * and that flag is reset to GL_NO_ERROR when glGetError is called.
+     * If more than one flag has recorded an error, glGetError returns and clears an arbitrary error flag value.
+     * Thus, glGetError should always be called in a loop,
+     * until it returns GL_NO_ERROR, if all error flags are to be reset.
+     * */
+    while (glGetError() != GL_NO_ERROR); // reset all error flags
+}
+
+static bool glLogCall(const char* function, const char* file, int line)
+{
+    while(GLenum error = glGetError())
+    {
+        std::cout << "[OpenGL Error] (" << error << ") occurred in "
+        << function << " at " <<
+        file << ": " << line <<std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 struct ShaderProgramSource
 {
     std::string vertexSource;
@@ -70,10 +100,10 @@ static unsigned int compileShader(unsigned int type, const std::string& source)
      * 4. If the length is null, the string is assumed to be null terminated
      * Refer http://docs.gl/gl4/glShaderSource for alternatives for 4th argument
      * */
-    glShaderSource(id, 1, &src, nullptr);
+    glCall(glShaderSource(id, 1, &src, nullptr));
 
     /* Now that you know the shader source string and other details, compile the shader*/
-    glCompileShader(id);
+    glCall(glCompileShader(id));
 
     // error handling before returning the id
 
@@ -83,26 +113,26 @@ static unsigned int compileShader(unsigned int type, const std::string& source)
      * actual function is glGetShader()
      * Here 'i' stands for id that it needs
      * and 'v' stands for the vector (int pointer) to store the result*/
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+    glCall(glGetShaderiv(id, GL_COMPILE_STATUS, &result));
 
     if(result == GL_FALSE) // our compilation failed
     {
         int length;
         // Get the info log length
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+        glCall(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length));
 
         char message[length]; // we are creating this on stack. alternative to create on stack is using alloca
         // char* message = (char*)alloca(length * sizeof(char));
 
         // fill the log in our message
-        glGetShaderInfoLog(id, length, &length, message);
+        glCall(glGetShaderInfoLog(id, length, &length, message));
         std::cout << "Failed to Compile " <<
                                          (type == GL_VERTEX_SHADER ? "vertex" : "fragment")
                                          << " shader!" << std::endl;
         std::cout << message << std::endl;
 
         /* No need of keeper our shader as its compilation failed*/
-        glDeleteShader(id);
+        glCall(glDeleteShader(id));
         return 0;
     }
 
@@ -117,27 +147,27 @@ static unsigned int createProgram(const std::string& vertexShader, const std::st
     unsigned int fs = compileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
     /* After compiling shaders, attach them to the above created program*/
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
+    glCall(glAttachShader(program, vs));
+    glCall(glAttachShader(program, fs));
 
     /* links the program object specified by program
      * If any shader objects of type GL_VERTEX_SHADER/GL_GEOMETRY_SHADER/GL_FRAGMENT_SHADER are attached to program,
      * they will be used to create an executable that will run on the programmable vertex/geometry/fragment processor respectively
      * */
-    glLinkProgram(program);
+    glCall(glLinkProgram(program));
 
     /* checks whether the executables in the program can execute given the current state of the program.
      * For both glLinkProgram and glValidateProgram,
      * the status of the validation operation is stored as part of the program's object state.
      * This will be set to GL_TRUE if validation succeeded and GL_FALSE otherwise. It can be queried by
      * calling glGetProgram() with arguments program and GL_VALIDATE_STATUS*/
-    glValidateProgram(program);
+    glCall(glValidateProgram(program));
 
     /* Now that we've linked our shaders to our program, we can flag them for deletion
      * frees the memory and invalidates the name associated with the shader object specified by shader.
      * This command effectively undoes the effects of a call to glCreateShader.*/
-    glDeleteShader(vs);
-    glDeleteShader(fs);
+    glCall(glDeleteShader(vs));
+    glCall(glDeleteShader(fs));
 
     return program;
 }
@@ -183,11 +213,11 @@ int main()
     /* I need 1 buffer. So give me one buffer. And put the address of the generated buffer
      * in the unsigned int $buffer variable so that buffer variable contains the ID of the
      * generated buffer*/
-    glGenBuffers(1, &buffer);
+    glCall(glGenBuffers(1, &buffer));
 
     /* So you gave me a buffer id. Good. Now I am saying that that buffer id will refer to
      * an array of bytes*/
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
 
     /* Ok, as you know that buffer id refers to an array of bytes, I will tell you
      * what the actual size of that buffer is. I know that I need not tell you right away and
@@ -203,7 +233,7 @@ int main()
      * */
     // notice the memory improvement by using indices.
     // we now need only 4 vertices (8 floats) instead of 6 (12 floats)
-    glBufferData(GL_ARRAY_BUFFER, 8* sizeof(float), positions, GL_STATIC_DRAW);
+    glCall(glBufferData(GL_ARRAY_BUFFER, 8* sizeof(float), positions, GL_STATIC_DRAW));
 
     /* A little intro to a vertex:
      * A vertex can have multiple attributes like position, texture coordinates, normals etc.
@@ -245,22 +275,22 @@ int main()
      * 5. to go to next vertex's position attribute you have to travel 8 bytes (2 * float)
      * 6. the offset of position attribute from the vertex's beginning in this vertex is 0
      */
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (const void*)0);
+    glCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (const void*)0));
 
     /* After describing all the above data, I need you to enable the glVertexAttribPointer();
      * Since, I described you about position attribute of my vertex above with index 0 right? (the first argument)
      * so, I need you to enable that.
      * */
-    glEnableVertexAttribArray(0);
+    glCall(glEnableVertexAttribArray(0));
 
     unsigned int ibo; // index buffer
-    glGenBuffers(1, &ibo); // give me an id for my index buffer
+    glCall(glGenBuffers(1, &ibo)); // give me an id for my index buffer
 
     // bind the index buffer to an element array buffer
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    glCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
     // my index buffer is of element array type, size is 6 unsigned ints,
     // pointer to my indices array, and hint is draw static
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+    glCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW));
 
     // directories are relative to the location of the executable. NOT to the main.cpp
     ShaderProgramSource source = parseShader("../res/shaders/Basic.shader");
@@ -269,7 +299,7 @@ int main()
     unsigned int shaderProgram = createProgram(source.vertexSource, source.fragmentSource);
 
     /* Now, use that shader program for our triangle*/
-    glUseProgram(shaderProgram);
+    glCall(glUseProgram(shaderProgram));
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -292,7 +322,7 @@ int main()
         // we are drawing triangles, using 6 indices, type unsigned int
         // since we already bound index buffer above as glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo)
         // we can pass nullptr to 4th argument
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        glCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
@@ -301,7 +331,7 @@ int main()
     }
 
     /* delete the shader program now that our window is closed and program is about to exit*/
-    glDeleteProgram(shaderProgram);
+    glCall(glDeleteProgram(shaderProgram));
 
     glfwTerminate();
     return 0;
