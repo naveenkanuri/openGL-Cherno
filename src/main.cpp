@@ -61,6 +61,7 @@ int main()
             2, 3, 0  // draw second triangle with above indices to make a full square
     };
 
+	/* Enable Blend*/
 	glCall(glEnable(GL_BLEND));
 	glCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
